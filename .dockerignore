@@ -20,6 +20,8 @@ bootstrap/cache/*.php
 *.sql
 *.backup
 *.dump
+# Dump database dipakai image db (docker/postgres/Dockerfile)
+!ta_bismillah.sql
 document requirement
 isi_bab*.html
 *.pdf

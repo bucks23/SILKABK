@@ -16,7 +16,8 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist \
         --no-interaction --no-progress --ignore-platform-reqs
 COPY . .
-RUN composer dump-autoload --no-dev --optimize --no-scripts
+# File dump database hanya untuk image db, jangan ikut ke image aplikasi
+RUN rm -f ./*.sql ./*.backup ./*.dump     && composer dump-autoload --no-dev --optimize --no-scripts
 
 ############################
 # 2. Build frontend (Vite + Vue)
@@ -47,8 +48,8 @@ ENV FPM_PORT=9000
 
 WORKDIR /var/www/html
 
-COPY --chown=www-data:www-data . .
-COPY --chown=www-data:www-data --from=vendor /app/vendor ./vendor
+# Kode + vendor diambil dari tahap "vendor" (sudah tanpa file dump)
+COPY --chown=www-data:www-data --from=vendor /app ./
 COPY --chown=www-data:www-data --from=assets /app/public/build ./public/build
 
 COPY docker/production/entrypoint.sh /usr/local/bin/entrypoint

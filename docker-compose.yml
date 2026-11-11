@@ -1,37 +1,39 @@
 # ════════════════════════════════════════════════════════════════
 #  SILKABK — docker compose produksi
 #
-#  Jalankan dari root repo ini:
-#      cp .env.example .env      # lalu isi (lihat DEPLOY.md)
-#      docker compose up -d --build
+#  Variabel diisi lewat salah satu:
+#    - Portainer: Stacks > Add stack > Repository > "Environment variables"
+#    - Docker CLI: file .env di root repo (cp .env.example .env), lalu
+#                  docker compose up -d --build
+#  Daftar variabel: lihat DEPLOY.md.
 #
 #  Service:
-#    db        PostgreSQL (database SILKABK). Saat pertama kali, otomatis
-#              me-restore ta_bismillah.sql dan membuat user baca-saja untuk SPK.
+#    db        PostgreSQL. Saat pertama kali otomatis me-restore ta_bismillah.sql
+#              dan membuat user baca-saja "spk_reader" untuk SPK.
 #    backend   Laravel (PHP-FPM)              -> 127.0.0.1:${BACKEND_PORT}  (FastCGI)
 #    frontend  Nginx (hasil build Vue + PHP)  -> ${FRONTEND_PORT}          (HTTP)
 #
 #  Terhubung ke SPK Skrining Anak lewat jaringan Docker "uptd-network":
-#  SPK membaca database SILKABK di host "silkabk-db".
-#  Deploy repo INI lebih dulu, baru SPK.
+#  SPK membaca database SILKABK di host "silkabk-db". Deploy stack INI dulu.
 # ════════════════════════════════════════════════════════════════
 
 name: silkabk
 
 services:
   db:
-    image: postgres:18-alpine
+    build:
+      context: .
+      dockerfile: docker/postgres/Dockerfile
+    pull_policy: build
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${DB_DATABASE:-ta_bismillah}
       POSTGRES_USER: ${DB_USERNAME:-silkabk_user}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD di .env}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?isi DB_PASSWORD}
       # Password user baca-saja "spk_reader" yang dipakai SPK
-      SPK_READER_PASSWORD: ${SPK_READER_PASSWORD:?isi SPK_READER_PASSWORD di .env}
+      SPK_READER_PASSWORD: ${SPK_READER_PASSWORD:?isi SPK_READER_PASSWORD}
     volumes:
       - db-data:/var/lib/postgresql
-      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
-      - ${DB_DUMP_FILE:-./ta_bismillah.sql}:/dumps/dump:ro
     networks:
       default:
       uptd:
@@ -42,24 +44,42 @@ services:
       interval: 5s
       timeout: 5s
       retries: 60
+      start_period: 30s
 
   backend:
     build:
       context: .
       dockerfile: docker/production/Dockerfile
       target: backend
-    image: silkabk-backend:latest
+    pull_policy: build
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-    env_file: .env
     environment:
-      # Nilai yang wajib di dalam Docker (menimpa .env)
+      APP_NAME: ${APP_NAME:-SILKABK}
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_KEY: ${APP_KEY:?isi APP_KEY}
+      APP_URL: ${APP_URL:?isi APP_URL}
+      LOG_CHANNEL: stderr
+      LOG_LEVEL: ${LOG_LEVEL:-warning}
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: "5432"
-      LOG_CHANNEL: stderr
+      DB_DATABASE: ${DB_DATABASE:-ta_bismillah}
+      DB_USERNAME: ${DB_USERNAME:-silkabk_user}
+      DB_PASSWORD: ${DB_PASSWORD}
+      SESSION_DRIVER: ${SESSION_DRIVER:-file}
+      SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+      SESSION_SECURE_COOKIE: ${SESSION_SECURE_COOKIE:-true}
+      CACHE_STORE: ${CACHE_STORE:-file}
+      QUEUE_CONNECTION: ${QUEUE_CONNECTION:-sync}
+      MAIL_MAILER: ${MAIL_MAILER:-log}
+      # Integrasi SPK Skrining Anak
+      SPK_SKRINING_URL: ${SPK_SKRINING_URL:?isi SPK_SKRINING_URL}
+      SPK_SKRINING_SSO_SECRET: ${SPK_SKRINING_SSO_SECRET:?isi SPK_SKRINING_SSO_SECRET}
+      # Port PHP-FPM
       FPM_PORT: ${BACKEND_PORT:-8817}
     ports:
       - "${BACKEND_BIND:-127.0.0.1}:${BACKEND_PORT:-8817}:${BACKEND_PORT:-8817}"
@@ -71,7 +91,7 @@ services:
       context: .
       dockerfile: docker/production/Dockerfile
       target: frontend
-    image: silkabk-frontend:latest
+    pull_policy: build
     restart: unless-stopped
     depends_on:
       - backend
@@ -85,6 +105,6 @@ volumes:
   storage:
 
 networks:
-  # Jaringan bersama SILKABK <-> SPK (dibuat oleh repo ini)
+  # Jaringan bersama SILKABK <-> SPK (dibuat oleh stack ini)
   uptd:
     name: ${UPTD_NETWORK:-uptd-network}
