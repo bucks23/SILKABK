@@ -79,6 +79,8 @@ services:
       # Integrasi SPK Skrining Anak
       SPK_SKRINING_URL: ${SPK_SKRINING_URL:?isi SPK_SKRINING_URL}
       SPK_SKRINING_SSO_SECRET: ${SPK_SKRINING_SSO_SECRET:?isi SPK_SKRINING_SSO_SECRET}
+      # Password user baca-saja "spk_reader" (diatur ulang otomatis setiap start)
+      SPK_READER_PASSWORD: ${SPK_READER_PASSWORD}
       # Port PHP-FPM
       FPM_PORT: ${BACKEND_PORT:-8817}
     ports:
