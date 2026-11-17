@@ -198,6 +198,8 @@ class UserController extends Controller
 
     private function roleOptions(): array
     {
+        Role::syncAvailable();
+
         return Role::orderBy('id')
             ->get()
             ->map(fn ($r) => ['value' => $r->slug, 'label' => $r->name])
@@ -211,6 +213,7 @@ class UserController extends Controller
 
     private function validateUser(Request $request, ?User $user = null): array
     {
+        Role::syncAvailable();
         $validSlugs = Role::pluck('slug')->all();
         $rules = [
             'role'     => ['required', Rule::in($validSlugs)],

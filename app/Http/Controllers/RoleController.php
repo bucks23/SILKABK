@@ -14,6 +14,9 @@ class RoleController extends Controller
 {
     public function index(): Response
     {
+        // Baca otomatis: role bawaan + role yang dipakai akun ikut terdaftar
+        Role::syncAvailable();
+
         $roles = Role::orderBy('id')
             ->get()
             ->map(fn ($role) => [
@@ -24,7 +27,11 @@ class RoleController extends Controller
             ]);
 
         return Inertia::render('Roles/Index', [
-            'roles' => $roles,
+            'roles'   => $roles,
+            'summary' => [
+                'total_roles' => $roles->count(),
+                'total_users' => User::count(),
+            ],
         ]);
     }
 

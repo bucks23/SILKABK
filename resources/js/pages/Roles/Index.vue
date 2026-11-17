@@ -3,9 +3,19 @@
     <div class="max-w-2xl space-y-5">
 
       <!-- Header -->
-      <div>
-        <h2 class="text-lg font-semibold text-gray-800">Kelola Role</h2>
-        <p class="text-sm text-gray-500 mt-0.5">Daftar role pengguna sistem</p>
+      <div class="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Kelola Role</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Daftar role pengguna sistem</p>
+        </div>
+        <div class="flex gap-2 text-sm">
+          <span class="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-700">
+            <strong>{{ summary.total_roles }}</strong> role
+          </span>
+          <span class="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700">
+            <strong>{{ summary.total_users }}</strong> pengguna
+          </span>
+        </div>
       </div>
 
       <!-- Tabel Role -->
@@ -127,7 +137,8 @@ import { useForm, router } from '@inertiajs/vue3'
 import AppLayout from '@/layouts/AppLayout.vue'
 
 const props = defineProps({
-  roles: { type: Array, default: () => [] },
+  roles:   { type: Array,  default: () => [] },
+  summary: { type: Object, default: () => ({ total_roles: 0, total_users: 0 }) },
 })
 
 const systemSlugs = ['super_admin', 'admin', 'orang_tua', 'terapis', 'dokter', 'psikolog']
