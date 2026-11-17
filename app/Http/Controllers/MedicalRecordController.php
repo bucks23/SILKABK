@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\MedicalRecord;
 use App\Models\Patient;
+use App\Models\Psychologist;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -123,7 +124,8 @@ class MedicalRecordController extends Controller
     public function indexByPsychologist(Request $request): Response
     {
         [, $profile, $idField, $view] = $this->resolveProfile('psikolog');
-        abort_unless($profile || Auth::user()->role === 'super_admin', 403, 'Profil psikolog tidak ditemukan.');
+        // Psikolog melihat asesmen miliknya; super admin & dokter melihat semua asesmen
+        abort_if(Auth::user()->role === 'psikolog' && ! $profile, 403, 'Profil psikolog tidak ditemukan.');
 
         return Inertia::render($view . 'Index', [
             'records' => $this->baseQuery($idField, $profile, $request->search)->paginate(15)->withQueryString(),
@@ -134,17 +136,15 @@ class MedicalRecordController extends Controller
     public function createByPsychologist(): Response
     {
         return Inertia::render('Psychologist/MedicalRecords/Create', [
-            'patients' => Patient::where('is_active', true)->get(['id', 'name', 'medical_record_number', 'birth_date']),
+            'patients'      => Patient::where('is_active', true)->get(['id', 'name', 'medical_record_number', 'birth_date']),
+            'psychologists' => $this->psychologistOptions(),
         ]);
     }
 
     public function storeByPsychologist(Request $request)
     {
-        $psychologist = Auth::user()->psychologist;
-
-        abort_unless($psychologist, 403, 'Profil psikolog tidak ditemukan.');
-
         $validated = $request->validate([
+            'psychologist_id' => $this->psychologistRule(),
             'patient_id'      => ['required', 'exists:patients,id'],
             'visit_date'      => ['required', 'date'],
             'chief_complaint' => ['required', 'string'],
@@ -157,11 +157,12 @@ class MedicalRecordController extends Controller
             'visit_date.required'      => 'Tanggal kunjungan harus diisi.',
             'chief_complaint.required' => 'Keluhan utama harus diisi.',
             'diagnosis.required'       => 'Hasil asesmen harus diisi.',
+            'psychologist_id.required' => 'Psikolog penanggung jawab harus dipilih.',
         ]);
 
         MedicalRecord::create([
             ...$validated,
-            'psychologist_id' => $psychologist->id,
+            'psychologist_id' => $this->resolvePsychologistId($validated),
         ]);
 
         return redirect()->route('psychologist.medical-records')
@@ -182,8 +183,9 @@ class MedicalRecordController extends Controller
         $this->authorize('view', $record);
 
         return Inertia::render('Psychologist/MedicalRecords/Edit', [
-            'record'   => $record->load(['patient', 'psychologist']),
-            'patients' => Patient::where('is_active', true)->get(['id', 'name', 'medical_record_number']),
+            'record'        => $record->load(['patient', 'psychologist']),
+            'patients'      => Patient::where('is_active', true)->get(['id', 'name', 'medical_record_number']),
+            'psychologists' => $this->psychologistOptions(),
         ]);
     }
 
@@ -192,6 +194,7 @@ class MedicalRecordController extends Controller
         $this->authorize('update', $record);
 
         $validated = $request->validate([
+            'psychologist_id' => $this->psychologistRule(),
             'patient_id'      => ['required', 'exists:patients,id'],
             'visit_date'      => ['required', 'date'],
             'chief_complaint' => ['required', 'string'],
@@ -199,9 +202,14 @@ class MedicalRecordController extends Controller
             'treatment_plan'  => ['nullable', 'string'],
             'kpsp_result'     => ['nullable', 'array'],
             'notes'           => ['nullable', 'string'],
+        ], [
+            'psychologist_id.required' => 'Psikolog penanggung jawab harus dipilih.',
         ]);
 
-        $record->update($validated);
+        $record->update([
+            ...$validated,
+            'psychologist_id' => $this->resolvePsychologistId($validated, $record->psychologist_id),
+        ]);
 
         return redirect()->route('psychologist.medical-records')
             ->with('success', 'Rekam medis psikologi berhasil diperbarui.');
@@ -248,6 +256,33 @@ class MedicalRecordController extends Controller
     }
 
     // ─── Helpers ─────────────────────────────────────────────────
+
+    /**
+     * Daftar psikolog untuk dipilih super admin / dokter.
+     * Psikolog sendiri tidak perlu memilih (otomatis dirinya).
+     */
+    private function psychologistOptions(): array
+    {
+        if (Auth::user()->psychologist) {
+            return [];
+        }
+
+        return Psychologist::orderBy('nama')->get(['id', 'nama'])->all();
+    }
+
+    private function psychologistRule(): array
+    {
+        return Auth::user()->psychologist
+            ? ['nullable']
+            : ['required', 'exists:psychologists,id'];
+    }
+
+    /** Psikolog → dirinya sendiri; super admin / dokter → psikolog yang dipilih. */
+    private function resolvePsychologistId(array $validated, ?int $current = null): ?int
+    {
+        return Auth::user()->psychologist?->id
+            ?? (int) ($validated['psychologist_id'] ?? $current);
+    }
 
     private function resolveProfile(string $role): array
     {

@@ -204,7 +204,8 @@ Route::middleware(['auth', 'check.active'])->group(function () {
     });
 
     // ── Psikolog: asesmen psikologi & screening KPSP (US-13, US-14) ──────────
-    Route::middleware('role:psikolog,super_admin')->prefix('psychologist')->name('psychologist.')->group(function () {
+    // Super admin dan dokter juga dapat mengelola asesmen.
+    Route::middleware('role:psikolog,dokter,super_admin')->prefix('psychologist')->name('psychologist.')->group(function () {
 
         // Rekam medis & asesmen psikologi
         Route::get('/medical-records',               [MedicalRecordController::class, 'indexByPsychologist'])->name('medical-records');

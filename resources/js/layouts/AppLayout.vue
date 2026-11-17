@@ -60,6 +60,7 @@
           <NavItem :href="route('doctor.medical-records')"       label="Rekam Medis (Dokter)" />
           <NavItem :href="route('doctor.diagnoses.index')"       label="Diagnosa Penyakit" />
           <NavItem :href="route('psychologist.medical-records')" label="Asesmen (Psikolog)" />
+          <NavItem :href="route('psychologist.medical-records.create')" label="+ Input Asesmen" />
         </template>
 
         <!-- ─── Admin ──────────────────────────────────────── -->
@@ -107,6 +108,9 @@
           <NavGroup label="Diagnosa" />
           <NavItem :href="route('doctor.diagnoses.index')"  label="Daftar Diagnosa" />
           <NavItem :href="route('doctor.diagnoses.create')" label="+ Diagnosa Baru" />
+          <NavGroup label="Asesmen Psikologi" />
+          <NavItem :href="route('psychologist.medical-records')"        label="Daftar Asesmen" />
+          <NavItem :href="route('psychologist.medical-records.create')" label="+ Input Asesmen" />
         </template>
 
         <!-- ─── Psikolog ───────────────────────────────────── -->

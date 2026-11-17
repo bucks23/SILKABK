@@ -21,6 +21,17 @@
         <div class="bg-white rounded-2xl border border-gray-200 p-6 space-y-5">
           <h3 class="font-semibold text-gray-800 pb-3 border-b border-gray-100">Informasi Asesmen</h3>
 
+          <div v-if="psychologists.length">
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">Psikolog Penanggung Jawab <span class="text-red-500">*</span></label>
+            <select v-model="form.psychologist_id"
+              class="w-full px-3 py-2 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              :class="form.errors.psychologist_id ? 'border-red-400' : 'border-gray-300'">
+              <option value="">-- Pilih Psikolog --</option>
+              <option v-for="ps in psychologists" :key="ps.id" :value="ps.id">{{ ps.nama }}</option>
+            </select>
+            <p v-if="form.errors.psychologist_id" class="mt-1 text-xs text-red-500">{{ form.errors.psychologist_id }}</p>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1.5">Pasien <span class="text-red-500">*</span></label>
             <select v-model="form.patient_id"
@@ -102,13 +113,16 @@ import AppLayout from '@/layouts/AppLayout.vue'
 import KpspSection from '@/components/KpspSection.vue'
 
 const props = defineProps({
-  record:   { type: Object, required: true },
-  patients: { type: Array,  default: () => [] },
+  record:        { type: Object, required: true },
+  patients:      { type: Array,  default: () => [] },
+  // Diisi bila yang login super admin / dokter (harus memilih psikolog)
+  psychologists: { type: Array,  default: () => [] },
 })
 
 const kpspRef = ref(null)
 
 const form = useForm({
+  psychologist_id: props.record.psychologist_id ?? '',
   patient_id:      props.record.patient_id,
   visit_date:      props.record.visit_date,
   chief_complaint: props.record.chief_complaint ?? '',
